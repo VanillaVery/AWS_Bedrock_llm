@@ -4,8 +4,9 @@ from langchain_community.chat_models import BedrockChat
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.chains import ConversationalRetrievalChain
 import pandas as pd
-from langchain.llms import BedrockEmbeddings
-from langchain.indexes import VectorstoreIndexCreator, FAISS
+from langchain_community.embeddings import BedrockEmbeddings
+from langchain.indexes import VectorstoreIndexCreator
+from langchain.vectorstores import FAISS
 from langchain_community.document_loaders import DataFrameLoader
 
 
@@ -45,20 +46,19 @@ def get_rag_chat_response(input_text, memory, index): #chat client 함수
 
 def get_index():
     # 예제 데이터 (책 제목과 소개 포함)
-    book_data = pd.DataFrame({
-        'title': ['Book Title 1', 'Book Title 2', ...],  # 책 제목
-        'description': ['Description 1', 'Description 2', ...]  # 책 소개
-    })
-
+    book_data = pd.read_csv("data240328forAWS.csv",usecols=['cmdt_name','annt_cntt'])
+    book_data = book_data.drop_duplicates(subset=['cmdt_name'])
+    book_data = book_data.iloc[:50] #일단 50권만
+ 
     embeddings = BedrockEmbeddings(
-        credentials_profile_name=os.environ.get("BWB_PROFILE_NAME"),
-        region_name=os.environ.get("BWB_REGION_NAME"),
-        endpoint_url=os.environ.get("BWB_ENDPOINT_URL"),
+        credentials_profile_name=os.environ.get("poc")
+        # region_name=os.environ.get("BWB_REGION_NAME"),
+        # endpoint_url=os.environ.get("BWB_ENDPOINT_URL"),
     )
 
     # 각 책의 내용을 로드하기 위한 커스텀 로더 생성
-    loaders = [DataFrameLoader(text=row['title'] + " " + row['description']) for _, row in book_data.iterrows()]
-
+    loaders = [DataFrameLoader(book_data,page_content_column='cmdt_name')]
+    
     index_creator = VectorstoreIndexCreator(
         vectorstore_cls=FAISS,
         embedding=embeddings,
@@ -68,4 +68,4 @@ def get_index():
 
     return index_from_loader
 
-index = get_index()
+
